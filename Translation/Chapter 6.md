@@ -822,7 +822,7 @@ David Nolen不光写出了一个对miniKanren的实现，也就是我们一直�
 
 **我们**：你是怎么对逻辑编程产生兴趣的？以及是什么让你创作了core.logic？
 
-**David**：我第一次见到逻辑编程是在2009年。当时我读了Jim Duey的一篇关于逻辑编程的博客————他用Clojure移植了一个简单的miniKanren实现，并且用声明的方式解决了那个经典的逻辑问题（爱因斯坦谜题）。这既让我惊讶也让我倍感有趣，所以发邮件给他询问这一切是怎么工作的。他向我介绍了《The Reasoned Schemer》，这本我在去第一届Clojure大会的路上带着的书。而后，因为好玩，所以我决定自己实现一个简单的miniKanren。但是《The Reasoned Schemer》里并没有太多的实现细节，所以我到处找相关的信息。最终我找到William Byrd的论文，也正是这个论文澄清了很多疑问，并且在一开始实现miniKanren的路上指导了我。不久之后Clojure引入了deftype，defrecord以及protocols，也就是这个时候，我觉得通过这些知识以及功能可以写出一个合理有效的miniKanren实现。在4到5个月后，我的实现可以和SWI-Prolog一样，非常快地解掉爱因斯坦谜题。这大大的鼓励了我，随后我沉浸在逻辑和约束逻辑编程的文献里，并且不断移植一些我遇到的有趣的点子，最终就形成了core.logic。
+**David**：我第一次见到逻辑编程是在2009年。当时我读了Jim Duey的一篇关于逻辑编程的博客——他用Clojure移植了一个简单的miniKanren实现，并且用声明的方式解决了那个经典的逻辑问题（爱因斯坦谜题）。这既让我惊讶也让我倍感有趣，所以发邮件给他询问这一切是怎么工作的。他向我介绍了《The Reasoned Schemer》，这本我在去第一届Clojure大会的路上带着的书。而后，因为好玩，所以我决定自己实现一个简单的miniKanren。但是《The Reasoned Schemer》里并没有太多的实现细节，所以我到处找相关的信息。最终我找到William Byrd的论文，也正是这个论文澄清了很多疑问，并且在一开始实现miniKanren的路上指导了我。不久之后Clojure引入了deftype，defrecord以及protocols，也就是这个时候，我觉得通过这些知识以及功能可以写出一个合理有效的miniKanren实现。在4到5个月后，我的实现可以和SWI-Prolog一样，非常快地解掉爱因斯坦谜题。这大大的鼓励了我，随后我沉浸在逻辑和约束逻辑编程的文献里，并且不断移植一些我遇到的有趣的点子，最终就形成了core.logic。
 
 **我们**：你觉得逻辑编程最适合去解什么类型的问题？
 
@@ -884,10 +884,496 @@ David Nolen不光写出了一个对miniKanren的实现，也就是我们一直�
 提示：可以用`!=`操作符。
 
 ## 第三天：用逻辑来写故事
+
+在前两天，你已经见到了core.logic的很多功能。
+现在是到了让我们整合这些知识，并且实现一个大型的例子的时候了。
+
+世面上有许许多多涉及到路线规划的问题。
+例如，你如何飞到一个遥远的城市？有时会有直达的航班，但也有些时候，路径会涉及到多条线路：不同的飞机，以及甚至几家航空公司。
+或者是一个卡车运送的问题。
+你必须从所有可能的路线里选出最快或者最短的线路。
+
+如果你想，其实可以有一个相似但更有趣的问题。
+并不需要去连接不同的城市，相反可以是有很多情节点，通过这些情节点构成了整个故事。
+然后，作为一个作家，为了达到最佳的效果，你需要不断地优化它：因此这个故事应该很短吗？还是应该在结尾的时候让每个人都死掉呢？
+
+我们将会用目前学到的逻辑知识来构建一个故事生成器。
+这里我们会用到和那些路径规划问题相同的技术，因此结果可能会显得很简单。
+
+在我们构建故事生成器之前，我们还有最后一个core.logic的功能需要提及：有限域。
+
 ### 用有限域编程
+
+逻辑编程的背后其实都是定向搜索算法。
+你指定约束条件，然后程序就会去找到满足的解。
+
+到目前为止，我们在逻辑编程里接触到了元素，列表以及散列图。
+虽然这些解可能会无限大，但是他们还是由有限的一组具体元素组成合成的。
+因此，为了找到`(membero q [1 2 3])`的解，core.logic只需要依次遍历每一个元素。
+
+那当我们对数字进行操作的时候会发生什么呢？假设我们查找`(<= q 1)`的整数解，这里有无数的解，甚至更糟的是有无数种可能性去尝试。
+于是，根据你从哪里开始，以及怎么去搜索，你有可能永远得不到解。
+
+当我们限定`q`是正整数或者其他一组数字集合的时候，这个问题就迎刃而解了。
+在core.logic里，我们可以用有限域来对施加约束，它能够为搜索的问题添加一套有效状态集的知识。
+让我们来看一个用了有限域的`(<= q 1)`例子：
+
+```Clojure
+  user=> (require '[clojure.core.logic.fd :as fd])
+  nil
+  user=> (run* [q]
+❶   #_=>   (fd/in q (fd/interval 0 10))
+    #_=>   (fd/<= q 1))
+❷ (0 1)
+```
+
+1. 通过这个约束，`q`被限定在给定区间里的整数。
+
+2. 正因为约束域，所以解是有限的，并且能够很快的得出结果。
+
+有限域不光能够在数字上使用，也更够让你在逻辑变量上的进行数学操作。
+我们可以让core.logic帮我们找出不相等的三个相加和为100的数的所有解。
+
+```Clojure
+  user=> (run* [q]
+❶   #_=>   (fresh [x y z a]
+    #_=>     (== q [x y z])
+❷   #_=>     (fd/in x y z a (fd/interval 1 100))
+❸   #_=>     (fd/distinct [x y z])
+❹   #_=>     (fd/< x y)
+    #_=>     (fd/< y z)
+    #_=>     (fd/+ x y a)
+    #_=>     (fd/+ a z 100)))
+❺ ([1 2 97] [2 3 95] [1 3 96] [1 4 95] [3 4 93] [2 4 94] ...)
+```
+
+1. `x`，`y`和`z`是我们需要解出的数字，`a`只是一个临时使用的变量。
+
+2. 将所有的逻辑变量都约束在1到100这个有限的范围里。
+
+3. `fd/distinct`设置了一个逻辑变量之间彼此不能相等的约束。
+可以防止类似解：`[1 1 98]`的发生。
+
+4. 我们限定`x`必须要小于`y`，同样的`y`必须要小于`z`。
+如果我们没有加这一步的话，就会出现`[6 28 66]`和`[66 28 6]`这样重复的解。
+
+5. core.logic并不慢，因为总共有784个解，而我的机器只用了5毫秒就全部得到了它们。
+
+除了用一个临时逻辑变量来辅助3个数相加比较蠢之外，整个代码是没有问题的。
+并且，core.logic在数学计算上还提供了一个语法糖：`fd/eq`。
+它可以让我们用正常的表达式来表达我们的等式。
+在将它转换到代码的时候，它会自动创建合适的临时逻辑变量，以及用合适这个临时变量的有限域来对它进行约束。
+
+```Clojure
+user=> (run* [q]
+  #_=>   (fresh [x y z]
+  #_=>     (== q [x y z])
+  #_=>     (fd/in x y z (fd/interval 1 100))
+  #_=>     (fd/distinct [x y z])
+  #_=>     (fd/< x y)
+  #_=>     (fd/< y z)
+  #_=>     (fd/eq
+  #_=>       (= (+ x y z) 100))))
+([1 2 97] [2 3 95] ...)
+```
+
+最后一行显然更简单了，也让整个程序更易读了。
+
+让我们花些时间回顾一下发生了什么。
+命令让逻辑变成了普通的语法，有限域将搜索的问题约束到一个小的范围，而后程序会返回所有可能的解，而不是单独的解。
+最重要的是，它是声明式的，因此读起来就像是问题的描述，而不是解决的方法。
+
 ### 神奇的故事
+
+到目前为止，我们的例子都是为了让你能够更好的理解core.logic中的单独功能。
+不过现在，我们会把你所学到的所有功能放到一个更现实，更复杂的例子里进行练习。
+这之后，你就能像是哈利·波特一样，可以用咒语来开门或者完成其他的普通任务了。
+
+就像是逻辑编程擅长于解决的：
+通过路线，调度交货或者路径规划问题等等这些问题一样，我们的任务将会是一个添加了约束条件的路径查找。
+
+和寻找送货卡车的路线或者用合适的通过路线来到达另一个城市不同，我们会生成故事。
+利用数据库里的情节元素，我们可以得出一个能够达到某一特定结局的故事。
+也就是，由你控制的逻辑以及结果，使得情节元素通过特定的路径并且成为一个故事。
+
+> **灵感的源泉**
+>
+> 2013年的Strange Loop里的一个奇妙的演讲催生了这个例子。
+> 那个演讲是Chris Martens的“线性逻辑编程”<sup>[a]</sup>。
+> 她同样也是“线性逻辑编程创造小故事生成器”论文的合作者<sup>[b]</sup>。
+> Chris在里面解释了线性逻辑编程，然后用《包法利夫人》为参考，让这一技术生成并探索故事。
+> 因此我强烈推荐你可以去研究一下她的工作。
+> 
+> [a]: http://www.infoq.com/presentations/linear-logic-programming
+> [b]: https://www.cs.cmu.edu/~cmartens/lpnmr13.pdf
+
+core.logic会生成很多各种各样可能性的故事，然后我们会去选出一条最有趣的来。
+我们会让Clojure根据我们的条件选出合适的故事。
+比如说，我们可能会为了看更长更有趣的故事，而筛掉短故事。
+
+#### 问题的细节
+
+在开始之前，让我们对这个问题先下一些定义。
+
+首先，我们需要一个存放故事元素的集合，还要一个可以推动故事元素的方法。
+虽然我们需要去创造很多情节点，但是我们可以很轻松的把他们当作因子存放在数据库里。
+我们可以直接用上好莱坞的惊悚喜剧电影《妙探寻凶》的情节，来省去创造情节点的麻烦。
+这个故事讲述了：
+六个客人被邀请到一座奇怪的房子中做客，在那里发生了一起谋杀事件，他们必须配合那里的职员找出这起案件的凶手。
+
+这里是一些电影里的故事片段：
+
+1. Wadsworth打开门，并在一个辆抛锚的车旁边发现了一名滞留的司机。
+这个司机希望能够用电话，因此Wadsworth将他带到了会客厅。
+调查小组的人将这个司机锁在了会客厅里，一边在其他房间里继续搜索杀手。
+
+2. 过了会儿，警察找到了这个废弃的车，并且开始着手调查发生了什么。
+
+3. 同时，有人用扳手杀掉了司机。
+
+我们可以用线性逻辑来模拟并管理电影从情节点1进展到情节点2。
+线性逻辑是你可能已经非常熟悉的逻辑的延伸，它可以让你使用并且操作某些资源。
+比如说，逻辑命题可能需要和使用特定的资源，我们会说“A消费了Z并且生成了B”，其中Z是某种特殊的资源，而不是“A蕴含B”。
+那么回到之前的故事片段里，情节3消费了一名司机，生成了一名死掉的司机。
+同样的情节2消费了一名司机，生成了一名警察。
+
+我们可以在core.logic的基础上创建一个简单的线性逻辑。
+因为每个情节元素都会有它需要一些资源以及它会生成的一些资源，所以我们会用一种2个元素的向量来表是需要以及生成的资源。
+例如：`[:motorist :policeman]`代表为了让这一幕发生，我们必须要有一个可用的`:motorist`然后它会生成`:policeman`。
+在电影里，这名滞留的司机按响了门铃去寻求帮助，紧接着一名警察发现了他的车，并且走进去找他。
+如果没有这名司机，警察永远也不会出现。
+
+我们将会有一组初始可用元素来作为起始状态，也会有一个用来把已经存在的故事元素推进到新的故事元素的关系，并且在结束状态里放上我们的需求来控制整个故事的走向。
+比如说：当某个特定的人被抓或者被杀死的时候，整个故事结束。
+
+在最后一步，我们将会把生成的故事按照可阅读的版本打印出来。
+
+#### 故事元素
+
+我们的故事元素需要包含所有被消费以及被生成的资源。
+此外我们还会为这些元素添加被用于打印出可读故事的片段。
+
+我们会需要大量的元素集来生成精彩的故事，但是《妙探寻凶》的剧情太多了。
+你可能已经注意到了不同的人能够被不同的方式谋杀掉；甚至《妙探寻凶》呈现出了3个不同的结局。
+
+让我们先添加一些元素`story-elements`到`story.clj`文件里：
+
+**minikanren/logical/src/logical/story.clj**
+```Clojure
+(def story-elements
+  [[:maybe-telegram-girl :telegram-girl
+    "A singing telegram girl arrives."]
+   [:maybe-motorist :motorist
+    "A stranded motorist comes asking for help."]
+   [:motorist :policeman
+    "Investigating an abandoned car, a policeman appears."]
+   [:motorist :dead-motorist
+    "The motorist is found dead in the lounge, killed by a wrench."]
+   [:telegram-girl :dead-telegram-girl
+    "The telegram girl is murdered in the hall with a revolver."]
+   [:policeman :dead-policeman
+    "The policeman is killed in the library with a lead pipe."]
+   [:dead-motorist :guilty-mustard
+    "Colonel Mustard killed the motorist, his old driver during the war."]
+   [:dead-motorist :guilty-scarlet
+    "Miss Scarlet killed the motorist to keep her secrets safe."]
+   ;; ...])
+```
+
+这里用的数据结构是向量的向量。
+内部的向量会包含3个元素：2个资源以及一段描述。
+为了让我们得到精彩的故事，`story-elements`一共存放了27个元素。
+
+我们还是需要对它进行一些处理，来使的它能够被存放到我们在core.logic里的故事数据库里。
+
+#### 构建数据库和初始状态
+
+我们的首要目标是把`story-elements`向量转换成core.logic能用的数据库因子。
+我们可以用一个简单的关系`ploto`来把输入元素关联到输出元素。
+所以当做完这件事之后，我们应该能够有和下面相似的代码：
+
+```Clojure
+(db-rel ploto a b)
+
+(def story-db
+  (db
+   [ploto :maybe-telegram-girl :telegram-girl]
+   [ploto :wadsworth :dead-wadsworth]
+   ;; ...))
+```
+
+我们可以用Clojure的`reduce`方法来执行这种转换。
+
+**minikanren/logical/src/logical/story.clj**
+```Clojure
+  (db-rel ploto a b)
+
+  (def story-db
+❶   (reduce (fn [dbase elems]
+              (apply db-fact dbase ploto (take 2 elems)))
+❷           (db)
+❸           story-elements))
+```
+
+1. `reduce`方法接受2个参数。
+第一个参数是一个能够包含方法初始、中间或者最终结果的蓄能器。
+第二个参数是当前执行的元素。
+在我们这里我们用`ploto`关系提取故事元素向量里元素的头2个元素，关系生成的因子被用来填充数据库。
+最后再把数据库作为第一个参数传进去。
+
+2. 我们的初始状态只是一个空白的数据库。
+
+3. 对`story-elements`执行命令会导致故事元素那个向量的向量成为core.logic的数据库因子。
+
+在有了故事元素之后，我们还需要一个初始状态。
+这个状态包含所有可能会出现的人物，以及所有已经在房子里，即将被杀害的人们。
+要注意的是，这里我们只需要列出故事元素里会被消费的资源。
+
+**minikanren/logical/src/logical/story.clj**
+```Clojure
+(def start-state
+  [:maybe-telegram-girl :maybe-motorist
+   :wadsworth :mr-boddy :cook :yvette])
+```
+
+包含故事元素的数据库和初始状态定义了我们故事里所有需要的数据。
+正如你过会儿会见到的一样，这些数据的准备会比真正生成故事的代码还要长。
+
+#### 情节的演进
+
+我们下一步任务是创建一个能够选择合适的故事元素，并将其演进到下一状态的剧情关系。
+这也正是我们生成器的核心部分：
+
+**minikanren/logical/src/logical/story.clj**
+```Clojure
+  (defn actiono [state new-state action]
+    (fresh [in out temp]
+❶     (membero in state)
+❷     (ploto in out)
+❸     (rembero in state temp)
+❹     (conso out temp new-state)
+      (== action [in out])))
+```
+
+1. 在`in`里的资源必须是在当前状态里的。
+在故事资源变为可用之前，我们并不能使用它。
+
+2. 一旦我们在`in`里有了一个资源，`ploto`就需要去找到对应的资源，并且生成`out`变量。
+
+3. 这个资源在故事过程中被消费了，因此需要从当前状态里删掉它。
+
+4. 新生成的资源需要被添加到状态里，形成新的状态集。
+
+我们可以在REPL里引入`logical.story`，并且调用`actiono`来进行测试：
+
+```Clojure
+user=> (require '[logical.story :as story])
+user=> (with-db story/story-db
+  #_=>   (run* [q]
+  #_=>     (fresh [action state]
+  #_=>       (== q [action state])
+  #_=>       (story/actiono [:motorist] state action))))
+([[:motorist :policeman] (:policeman)]
+ [[:motorist :dead-motorist] (:dead-motorist)])
+```
+
+这个查询语句里包含了起始状态`[:motorist]`，并且期望得到所有可能的剧情以及它们相对应的新状态。
+也就是警察能够去寻找滞留的司机，或者是司机能够被谋杀的这些状态。
+
+我们需要把这个转换反向执行来生成我们的故事，也就是在开始的时候就有一些目标条件——那些我们期望在结束状态里存在的资源——然后我们期望能够找出一个能够从开始状态到这些目标的剧情流程。
+
+**minikanren/logical/src/logical/story.clj**
+```Clojure
+  (declare story*)
+
+  (defn storyo [end-elems actions]
+❶   (storyo* (shuffle start-state) end-elems actions))
+
+  (defn storyo* [start-state end-elems actions]
+    (fresh [action new-state new-actions]
+❷     (actiono start-state new-state action)
+❸     (conso action new-actions actions)
+      (conda
+❹      [(everyg #(membero % new-state) end-elems)
+        (== new-actions [])]
+❺      [(storyo* new-state end-elems new-actions)])))
+```
+
+1. `storyo`作为`storyo*`的简写可以可以让用户不用每次都输入初始状态。
+对初始状态的打乱则会让每次生成的解的顺序都不同。
+
+2. 我们通过某些剧情来使得某些状态转变成新的状态。
+
+3. 我们将会在一个列表里准备我们得到的剧情。
+
+4. `everyg`命令是，只有当第二个参数里提供的集合里的所有元素，都能够让第一个参数里的目标函数返回成功时，才会返回成功。
+当在`end-elems`里的所有资源都属于`new-state`的时候，我们的故事也就结束了。
+而因为之后不会有更多的剧情，因此将`new-actions`置为空向量。
+
+5. 如果我们的目标并没有完全成功，则递归调用`storyo*`直到故事结束。
+
+让我们在REPL里调用`storyo`来生成一些简单的故事：
+
+```Clojure
+user=> (with-db story/story-db
+  #_=>   (run 5 [q]
+  #_=>     (story/storyo [:dead-wadsworth] q)))
+(([:wadsworth :dead-wadsworth])
+ ([:maybe-motorist :motorist] [:wadsworth :dead-wadsworth])
+ ([:maybe-telegram-girl :telegram-girl] [:wadsworth :dead-wadsworth])
+ ([:maybe-motorist :motorist] [:motorist :policeman]
+  [:wadsworth :dead-wadsworth])
+ ([:maybe-motorist :motorist] [:motorist :dead-motorist]
+  [:dead-motorist :guilty-mustard] [:wadsworth :dead-wadsworth]))
+```
+
+core.logic用我们的故事数据库生成了5个结局是Wadsworth死掉的故事。
+每个解都是由一些列的剧情组成的，如果你还记得所有的故事元素，并且仔细研究这些解，那你应该能够知道到底发生了什么。
+比如，在最后这个故事里，滞留的司机出现后被Mustard上校杀掉了，之后Wadsworth在走廊里被被左轮手枪杀害。
+
+所以我们还有些事情需要做。
+生成的故事不应该是这样单调的剧情，而应该是人类直接可读的故事。
+因此我们需要把故事内容给提取出来，生成更加有趣的结果。
+
+#### 可读的故事
+
+要生成可读的故事只需要把在`story-elements`里存放的解释给提取出来并输出为结果。
+因此我们可以把`story-elements`从剧情转换成文字的散列图，然后就能够在结尾处输出人类可读的故事了。
+
+**minikanren/logical/src/logical/story.clj**
+```Clojure
+  (def story-map
+❶   (reduce (fn [m elems]
+              (assoc m (vec (take 2 elems)) (nth elems 2)))
+            {}
+            story-elements))
+  (defn print-story [actions]
+    (println "PLOT SUMMARY:")
+❷   (doseq [a actions]
+      (println (story-map a))))
+```
+
+1. 我们的命令会为每一个元素创造一个新的键值对，并将它放在一个散列图里。
+和之前的剧情向量类似，我们的键还是包含了输入输出的2个资源的向量，值是故事元素里的解释。
+
+2. `print-story`只是从之前生成的散列图里找到对应剧情的解释，并且输出出来成为结果。
+
+让我们来试着生成一个故事：
+
+```Clojure
+  user=> (def stories
+    #_=>   (with-db story/story-db
+❶   #_=>     (run* [q]
+    #_=>       (story/storyo [:guilty-scarlet] q))))
+  #'user/stories
+❷ user=> (story/print-story (first (drop 10 stories)))
+  PLOT SUMMARY:
+  A stranded motorist comes asking for help.
+  The motorist is found dead in the lounge, killed by a wrench.
+  Colonel Mustard killed the motorist, his old driver during the war.
+  The cook is found stabbed in the kitchen.
+  Miss Scarlet killed the cook to silence her.
+  nil
+```
+
+1. `run*`会生成所有的故事的流。
+不过因为它是延迟加载的，所以它会马上返回，并且等到我们真的需要结果的时候才输出解。
+Clojure的一个有用的功能就是延迟流。
+
+2. 为了得到更长，更有趣的故事，我们可以忽略掉一些初始故事。
+在这里我们忽略了前10个故事，并从剩下的流中选取了第一个故事作为结果。
+
+到现在为止，我们的进展还是不错的。
+生成的故事虽然有点短，不过读起来还是蛮有趣的。
+随后，我们将会用上Clojure强大的流操作功能来对我们的故事流进行处理。
+
+#### 挖掘故事
+
+Clojure有对各种数据进行分解、筛选以及操作的大量工具。
+在前面的例子里，你以及可以了解到用这些工具对core.logic产生的延迟流进行操作是多么的简单。
+
+我们可以通过使用这些工具来从`run*`以及`storyo`生成的故事里找出更有趣的来。
+通过同时使用流处理以及目标状态，我们可以直接得到最有趣的结果。
+
+```Clojure
+user=> (defn story-stream [& goals]
+  #_=>   (with-db story/story-db
+  #_=>     (run* [q]
+  #_=>       (story/storyo (vec goals) q))))
+#'user/story-stream
+
+user=> (story/print-story
+  #_=>   (first
+  #_=>     (filter #(> (count %) 10)
+  #_=>             (story-stream :guilty-peacock :dead-yvette))))
+PLOT SUMMARY:
+A stranded motorist comes asking for help.
+Investigating an abandoned car, a policeman appears.
+The policeman is killed in the library with a lead pipe.
+Mrs. Peacock killed the policeman.
+Mr. Boddy's body is found in the hall beaten to death with a candlestick.
+Wadsworth is found shot dead in the hall.
+Mr. Green, an undercover FBI agent, shot Wadsworth.
+A singing telegram girl arrives.
+The telegram girl is murdered in the hall with a revolver.
+Miss Scarlet killed the telegram girl so she wouldn't talk.
+Yvette, the maid, is found strangled with the rope in the billiard room.
+nil
+```
+
+正因为我们要求故事里至少包含10个元素，Yvette被杀，以及Mrs. Peacock是一名凶手，我们生成了一个形势非常严峻的故事。
+
+你可以继续执行，来看看还能得到什么有趣的故事。
+在今天的练习里，我们会对这个系统进行扩展。
+
 ### 第三天我们学到了什么
+
+今天我们从更实用的角度了解了core.logic。
+逻辑编程并不只是能解谜题，很多现实中的问题也可以被它解决。
+
+我们首先了解了在需要约束求解时非常有用的有限域。
+例如：Mac OS X操作系统的界面引擎就是一个约束求解器。
+而对core.logic来说，它不光能够让这类的问题更容易表达，还能够很快地得到问题的解。
+
+之后，我们用逻辑实现了一个不是解决城市连接路线，而是通过不同的情节点来生成故事的路径规划问题。
+通过使用简单的线性逻辑，递归函数以及Clojure提供的数据操作工具，我们成功的用几行代码就创建了一个故事生成器的原型。
+
 ### 轮到你了
+
+如果你还没有玩过这章里的任何代码的话，现在是到了你来用今天学到的这些工具的时候了。
+
+#### 查看...
+
+* 其他人用core.logic的有限域的例子
+
+* 由逻辑引擎为核心的商业产品。
+提示：可以搜搜Prolog。
+
+#### 练习（简单）
+
+* 写一些其他的数学等式，并让core.logic解它。
+
+* 生成一个包含司机从来没出现并且有至少两个杀人犯的故事。
+
+#### 练习（一般）
+
+* 如果在故事的结尾我们才能够知道谁是杀手的话，整个故事将会变得更加的悬疑。
+用Clojure的数据操作工具来将这些故事事件放到结尾。
+
+* 如果警察提前到来，那名司机就永远不会被杀。
+因为在我们的线性逻辑里，输入永远会被消费，所以这是一个的缺陷。
+请尝试扩展故事生成器来使得故事元素能够有多个输出。
+然后用这个新的生成器来生成警察和司机都被杀害的故事。
+
+#### 练习（困难）
+
+* 请尝试用有限域来实现一个数独求解器。
+提示：你可以用`lval`来为所有的空格子创建匿名逻辑变量。
+需要为每一个行，每一列，以及每一个块都创建相应的规则。
+
+* 用你最喜欢的书来创建一套全新的故事元素以及它的初始状态。
+并且用故事生成器来生成一个你觉得最有趣的版本。
+
 ## miniKanren的回顾
 ### 优势
 ### 劣势
