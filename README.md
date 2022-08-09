@@ -1,32 +1,24 @@
-# 七周七语言（卷二）
+# BigEgg's publications
 
-负责了《七周七语言（卷二）》第六章miniKanren的翻译。如果发现了任何错误，请在[这里创建Issues](https://github.com/BigEggPublication/7-More-Languages-in-7-Weeks/issues)。
+## Translated books
 
-## 目录
-
-* [第6章 miniKanren](./Translation/Chapter%206.md)
-   * [第一天：代码的一致性匹配](./Translation/Chapter%206.md#第一天代码的一致性匹配)
-      * [安装core.logic](./Translation/Chapter%206.md#安装corelogic)
-      * [目标一定要成功](./Translation/Chapter%206.md#目标一定要成功)
-      * [使用关系](./Translation/Chapter%206.md#使用关系)
-      * [用因子编程](./Translation/Chapter%206.md#用因子编程)
-      * [平行宇宙](./Translation/Chapter%206.md#平行宇宙)
-      * [咒语的秘密](./Translation/Chapter%206.md#咒语的秘密)
-      * [第一天我们学到了什么](./Translation/Chapter%206.md#第一天我们学到了什么)
-      * [轮到你了](./Translation/Chapter%206.md#轮到你了)
-   * [第二天：混合逻辑与函数](./Translation/Chapter%206.md#第二天混合逻辑与函数)
-      * [模式，那里都是模式](./Translation/Chapter%206.md#模式那里都是模式)
-      * [用上散列图](./Translation/Chapter%206.md#用上散列图)
-      * [另一种判定](./Translation/Chapter%206.md#另一种判定)
-      * [对David Nolen的采访](./Translation/Chapter%206.md#对david-nolen的采访)
-      * [第二天我们学到了什么](./Translation/Chapter%206.md#第二天我们学到了什么)
-      * [轮到你了](./Translation/Chapter%206.md#轮到你了-1)
-   * [第三天：用逻辑来写故事](./Translation/Chapter%206.md#第三天用逻辑来写故事)
-      * [用有限域编程](./Translation/Chapter%206.md#用有限域编程)
-      * [神奇的故事](./Translation/Chapter%206.md#神奇的故事)
-      * [第三天我们学到了什么](./Translation/Chapter%206.md#第三天我们学到了什么)
-      * [轮到你了](./Translation/Chapter%206.md#轮到你了-2)
-   * [miniKanren的回顾](./Translation/Chapter%206.md#miniKanren的回顾)
-      * [优势](./Translation/Chapter%206.md#优势)
-      * [劣势](./Translation/Chapter%206.md#劣势)
-      * [写在最后](./Translation/Chapter%206.md#写在最后)
+* [Seven More Languages in Seven Weeks](https://pragprog.com/titles/7lang/seven-more-languages-in-seven-weeks/)
+  * Chinese Version, [《七周七语言（卷2）》](https://www.epubit.com/bookDetails?id=N26204))
+  * Translate the Chapter 6 miniKanren. Introduce the embedded Domain Specific Language for logic programming.
+  * Dec. 2016
+* [Data Structures and Algorithms Using Python and C++](https://fbeedle.com/our-books/12-data-structures-and-algorithms-using-python-and-c-9781590282335.html) (
+  * Chinese Version, [《数据结构和算法（Python和C++语言描述）》](https://www.epubit.com/bookDetails?id=UBb64009ede840)
+  * Apr. 2020
+* [Fundamentals of Python: Data Structures, 2nd Edition](https://www.cengage.com/c/fundamentals-of-python-data-structures-2e-lambert/9780357122754PF/)
+  * Chinese Version, [《数据结构（Python语言描述）（第2版）》](https://www.epubit.com/bookDetails?id=UB77b8c3cca4142)
+  * Jun. 2021
+* [Data Structures and Algorithm analysis in C++](https://www.pearson.com/en-us/subject-catalog/p/Weiss-Data-Structures-and-Algorithm-Analysis-in-C-4th-Edition/P200000003459/9780133404180)
+  * English Version, [《数据结构与算法分析：C++语言描述（英文版·第4版）》](https://www.epubit.com/bookDetails?id=UBc8341a5085c1)
+  * Translated the preface and table of content.
+  * Feb 2022
+* [Bit size Python](https://www.wiley.com/en-us/Bite+Size+Python%3A+An+Introduction+to+Python+Programming-p-9781119643821)
+  * Chinese Version, [《Python编程超简单》](https://www.epubit.com/bookDetails?id=UB7d5924e613fb8)
+  * Jul. 2022
+* [Advanced Algorithms and Data Structures](https://www.manning.com/books/advanced-algorithms-and-data-structures)
+  * Chinese Version
+  * 2022 (expected)
