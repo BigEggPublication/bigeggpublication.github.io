@@ -4,5 +4,5 @@
 
 * 英文版：https://www.manning.com/books/advanced-algorithms-and-data-structures
 * 出版社：人民邮电出版社
-* ISBN:
-* 主页：
+* ISBN：978-7-115-61457-5
+* 主页：https://www.epubit.com/bookDetails?id=UB83621ee35e98f
