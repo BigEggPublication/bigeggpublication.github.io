@@ -20,5 +20,5 @@
   * Chinese Version, [《Python编程超简单》](https://www.epubit.com/bookDetails?id=UB7d5924e613fb8)
   * Jul. 2022
 * [Advanced Algorithms and Data Structures](https://www.manning.com/books/advanced-algorithms-and-data-structures)
-  * Chinese Version
-  * 2022 (expected)
+  * Chinese Version, [《高级算法和数据结构》](https://www.epubit.com/bookDetails?id=UB83621ee35e98f)
+  * Dec, 2023
